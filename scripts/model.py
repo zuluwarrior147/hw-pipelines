@@ -2,9 +2,10 @@ import os
 import json
 from xgboost import XGBClassifier
 import wandb
+import typer
 
 
-def save_model(model, metrics, filepath=None):
+def save_model(model, metrics, filepath="models"):
     """
     Save model to file with metadata in JSON format.
     
@@ -13,17 +14,10 @@ def save_model(model, metrics, filepath=None):
         metrics (dict): Performance metrics
         filepath (str): Optional custom filepath for saving the model (without extension)
     """
-    # Create models directory if it doesn't exist
-    os.makedirs("models", exist_ok=True)
-    
-    # Determine base filepath
-    if filepath is None:
-        base_filepath = "models/model"
-    else:
-        base_filepath = filepath
+    os.makedirs(filepath, exist_ok=True)
     
     # Save model using XGBoost's native format
-    model_filepath = f"{base_filepath}.json"
+    model_filepath = f"{filepath}/model.json"
     model.save_model(model_filepath)
     
     # Save metadata as JSON
@@ -33,7 +27,7 @@ def save_model(model, metrics, filepath=None):
         'model_file': model_filepath
     }
     
-    metadata_filepath = f"{base_filepath}_metadata.json"
+    metadata_filepath = f"{filepath}/metadata.json"
     with open(metadata_filepath, 'w') as f:
         json.dump(metadata, f, indent=2)
     
@@ -42,7 +36,7 @@ def save_model(model, metrics, filepath=None):
     print(f"Metadata saved to {metadata_filepath}")
 
 
-def load_model(filepath="models/model"):
+def load_model(filepath: str = typer.Option("models")):
     """
     Load model and metadata from JSON files.
     
@@ -54,7 +48,7 @@ def load_model(filepath="models/model"):
     """
     
     # Load metadata
-    metadata_filepath = f"{filepath}_metadata.json"
+    metadata_filepath = f"{filepath}/metadata.json"
     with open(metadata_filepath, 'r') as f:
         metadata = json.load(f)
     
@@ -66,8 +60,8 @@ def load_model(filepath="models/model"):
     return model, metadata
 
 
-def upload_model():
-    _, metadata = load_model()
+def upload_model(model_path: str = typer.Option("models")):
+    _, metadata = load_model(model_path)
 
     run = wandb.init()
 
@@ -85,8 +79,7 @@ def upload_model():
 
     artifact.add_file(metadata['model_file'])
     
-    run.log_artifact(artifact)
-    run.finish()
+    wandb.log_artifact(artifact)
 
 
 if __name__ == "__main__":

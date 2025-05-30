@@ -6,7 +6,8 @@ from scripts.preprocessing import load_and_preprocess
 
 def test_load_and_preprocess():
     """Test the preprocessing function with the actual data file."""
-    X_train, X_test, y_train, y_test = load_and_preprocess()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        X_train, X_test, y_train, y_test = load_and_preprocess(path=temp_dir)
     
     # Check that we get the expected number of splits
     assert len(X_train) > 0
@@ -37,7 +38,8 @@ def test_preprocessing_with_sample_data(sample_data):
     
     try:
         # Test preprocessing with the temporary file
-        X_train, X_test, y_train, y_test = load_and_preprocess(temp_filename)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            X_train, X_test, y_train, y_test = load_and_preprocess(path=temp_dir, file_name=temp_filename)
         
         # Basic assertions
         assert X_train.shape[1] == X_test.shape[1]
@@ -59,7 +61,8 @@ def test_data_shape_consistency(sample_data):
         temp_filename = temp_file.name
     
     try:
-        X_train, X_test, y_train, y_test = load_and_preprocess(temp_filename)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            X_train, X_test, y_train, y_test = load_and_preprocess(path=temp_dir, file_name=temp_filename)
         
         # Check shapes are consistent
         assert len(X_train) == len(y_train)
@@ -106,7 +109,8 @@ def test_preprocessing_handles_missing_values():
     
     try:
         # Should not raise an error despite missing values
-        X_train, X_test, y_train, y_test = load_and_preprocess(temp_filename)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            X_train, X_test, y_train, y_test = load_and_preprocess(path=temp_dir, file_name=temp_filename)
         
         # Check that we still get valid data
         assert len(X_train) > 0

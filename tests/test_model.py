@@ -5,6 +5,8 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from unittest.mock import patch
 from scripts.training import train
 from scripts.model import save_model, load_model
+import tempfile
+import os
 
 
 class TestTrainedModels:
@@ -145,9 +147,6 @@ class TestTrainedModels:
     
     def test_model_serialization_compatibility(self, sample_trained_model):
         """Test that model can be saved/loaded using JSON format (for model persistence)."""
-        import tempfile
-        import os
-        
         model = sample_trained_model['model']
         X_test = sample_trained_model['X_test']
         metrics = sample_trained_model['metrics']
@@ -177,12 +176,16 @@ class TestTrainedModels:
         X_train, X_test, y_train, y_test = processed_data
         
         with patch('numpy.loadtxt') as mock_loadtxt, \
-             patch('scripts.training.save_model'):
+             patch('scripts.training.save_model'), \
+             tempfile.TemporaryDirectory() as temp_dir:
             
             # Configure the mock to return our test data in the right order
             mock_loadtxt.side_effect = [X_train, X_test, y_train, y_test]
             
-            model, X_test_ret, y_test_ret, metrics = train()
+            data_dir = os.path.join(temp_dir, "data")
+            model_dir = os.path.join(temp_dir, "models")
+            
+            model, X_test_ret, y_test_ret, metrics = train(data_path=data_dir, model_path=model_dir)
             
             # Verify model was trained
             assert isinstance(model, XGBClassifier)
@@ -220,13 +223,12 @@ class TestTrainedModels:
         with tempfile.TemporaryDirectory() as temp_dir:
             base_filepath = os.path.join(temp_dir, 'end_to_end_model')
             
-            # Train and save model
-            with patch('scripts.training.save_model', side_effect=lambda m, metrics, fp=None: save_model(m, metrics, fp or base_filepath)):
-                model, X_test_ret, y_test_ret, metrics = train(data=processed_data)
+            # Train and save model with explicit paths
+            model, X_test_ret, y_test_ret, metrics = train(data=processed_data, model_path=base_filepath)
             
             # Verify files exist
-            model_file = f"{base_filepath}.json"
-            metadata_file = f"{base_filepath}_metadata.json"
+            model_file = f"{base_filepath}/model.json"
+            metadata_file = f"{base_filepath}/metadata.json"
             assert os.path.exists(model_file)
             assert os.path.exists(metadata_file)
             

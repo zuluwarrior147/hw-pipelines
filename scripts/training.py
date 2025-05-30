@@ -3,6 +3,7 @@ from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import sys
 from pathlib import Path
+import typer
 
 # Add project root to Python path for clean absolute imports
 project_root = Path(__file__).parent.parent
@@ -10,7 +11,7 @@ sys.path.insert(0, str(project_root))
 
 from scripts.model import save_model
 
-def train(data=None):
+def train(data=None, data_path: str = typer.Option("data"), model_path: str = typer.Option("models")):
     """
     Train a model and return it along with test data for evaluation.
     
@@ -21,10 +22,10 @@ def train(data=None):
         tuple: (trained_model, X_test, y_test, metrics)
     """
     if data is None:
-        X_train = np.loadtxt("data/X_train.csv", delimiter=",")
-        X_test = np.loadtxt("data/X_test.csv", delimiter=",")
-        y_train = np.loadtxt("data/y_train.csv", delimiter=",")
-        y_test = np.loadtxt("data/y_test.csv", delimiter=",")
+        X_train = np.loadtxt(f"{data_path}/X_train.csv", delimiter=",")
+        X_test = np.loadtxt(f"{data_path}/X_test.csv", delimiter=",")
+        y_train = np.loadtxt(f"{data_path}/y_train.csv", delimiter=",")
+        y_test = np.loadtxt(f"{data_path}/y_test.csv", delimiter=",")
     else:
         X_train, X_test, y_train, y_test = data
     
@@ -52,7 +53,7 @@ def train(data=None):
     }
 
     # Save model with metrics
-    save_model(model, metrics)
+    save_model(model, metrics, model_path)
     
     return model, X_test, y_test, metrics
 

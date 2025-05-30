@@ -39,7 +39,12 @@ def test_xgboost_training(processed_data):
         assert 0 <= metrics['roc_auc'] <= 1
         
         # Verify save_model was called
-        mock_save.assert_called_once_with(model, metrics)
+        mock_save.assert_called_once()
+        # Check that it was called with the model, metrics, and model_path
+        call_args = mock_save.call_args[0]
+        assert call_args[0] is model
+        assert call_args[1] == metrics
+        # model_path should be a typer.Option object with default "models"
 
 def test_train_with_provided_data(processed_data):
     """Test training with provided data instead of loading from files."""
@@ -63,7 +68,11 @@ def test_train_with_provided_data(processed_data):
         assert 'roc_auc' in metrics
         
         # Verify save_model was called
-        mock_save.assert_called_once_with(model, metrics)
+        mock_save.assert_called_once()
+        # Check that it was called with the model, metrics, and model_path
+        call_args = mock_save.call_args[0]
+        assert call_args[0] is model
+        assert call_args[1] == metrics
 
 def test_model_parameters(processed_data):
     """Test that the model is created with the expected parameters."""
@@ -116,8 +125,8 @@ def test_save_model_function(processed_data):
         save_model(model, metrics, base_filepath)
         
         # Verify files were created
-        model_file = f"{base_filepath}.json"
-        metadata_file = f"{base_filepath}_metadata.json"
+        model_file = f"{base_filepath}/model.json"
+        metadata_file = f"{base_filepath}/metadata.json"
         assert os.path.exists(model_file)
         assert os.path.exists(metadata_file)
         
@@ -163,7 +172,7 @@ def test_save_model_default_path(processed_data):
         mock_model_save.assert_called_once_with("models/model.json")
         
         # Verify metadata file opening
-        mock_open.assert_called_once_with("models/model_metadata.json", 'w')
+        mock_open.assert_called_once_with("models/metadata.json", 'w')
         
         # Verify JSON dump was called
         mock_json_dump.assert_called_once()
@@ -221,10 +230,10 @@ def test_load_model_default_path():
         
         mock_model_load.return_value = None  # load_model modifies the object in place
         
-        loaded_model, loaded_metadata = load_model()
+        loaded_model, loaded_metadata = load_model(filepath="models")
         
         # Verify metadata file was opened
-        mock_open.assert_called_once_with("models/model_metadata.json", 'r')
+        mock_open.assert_called_once_with("models/metadata.json", 'r')
         
         # Verify JSON load was called
         mock_json_load.assert_called_once()
@@ -266,25 +275,20 @@ def test_training_integration(processed_data):
         mock_loadtxt.side_effect = [X_train, X_test, y_train, y_test]
         
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Temporarily change the models directory
-            original_save_model = save_model
+            data_dir = os.path.join(temp_dir, "data")
+            model_dir = os.path.join(temp_dir, "models")
             
-            def mock_save_model(model, metrics, filepath=None):
-                if filepath is None:
-                    filepath = os.path.join(temp_dir, "model")
-                return original_save_model(model, metrics, filepath)
+            # Call train with explicit paths
+            model, X_test_ret, y_test_ret, metrics = train(data_path=data_dir, model_path=model_dir)
             
-            with patch('scripts.training.save_model', side_effect=mock_save_model):
-                model, X_test_ret, y_test_ret, metrics = train()
-                
-                # Verify everything worked
-                assert isinstance(model, XGBClassifier)
-                assert len(X_test_ret) > 0
-                assert len(y_test_ret) > 0
-                assert all(key in metrics for key in ['accuracy', 'f1_score', 'roc_auc'])
-                
-                # Verify model files were created
-                model_file = os.path.join(temp_dir, "model.json")
-                metadata_file = os.path.join(temp_dir, "model_metadata.json")
-                assert os.path.exists(model_file)
-                assert os.path.exists(metadata_file) 
+            # Verify everything worked
+            assert isinstance(model, XGBClassifier)
+            assert len(X_test_ret) > 0
+            assert len(y_test_ret) > 0
+            assert all(key in metrics for key in ['accuracy', 'f1_score', 'roc_auc'])
+            
+            # Verify model files were created
+            model_file = os.path.join(model_dir, "model.json")
+            metadata_file = os.path.join(model_dir, "metadata.json")
+            assert os.path.exists(model_file)
+            assert os.path.exists(metadata_file) 
