@@ -4,3 +4,5 @@ xgboost==2.0.0
 numpy==1.24.3
 typer==0.16.0
 wandb==0.19.11
+apache-airflow==2.10.0
+apache-airflow-providers-cncf-kubernetes==8.3.3
